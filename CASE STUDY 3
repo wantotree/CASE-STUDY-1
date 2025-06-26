@@ -1,0 +1,197 @@
+// Include standard input/output functions
+#include <stdio.h>
+// Include standard library functions like malloc and free
+#include <stdlib.h>
+// Include string manipulation functions like strcpy, strcmp
+#include <string.h>
+
+// Define maximum length for student name
+#define MAX_NAME 30
+// Define maximum length for program code
+#define MAX_PROGRAM 5
+
+// Define the structure to store student information
+typedef struct Student {
+    char studentNumber[11];                // 10 characters + null terminator
+    char fullName[MAX_NAME + 1];           // Full name string
+    char gender;                           // 'M' or 'F'
+    char programCode[MAX_PROGRAM + 1];     // Program code (e.g., BSIT)
+    int yearLevel;                         // Year level (1 to 4)
+    int unitsEnrolled;                     // Number of units taken
+    float prelimGrade, midtermGrade, finalExamGrade; // Grades per period
+    float finalGrade;                      // Final grade = average of 3 grades
+    char academicStanding[15];             // Standing (e.g., Regular)
+    char remarks[10];                      // Remarks (e.g., Passed/Failed)
+    struct Student* next;                  // Pointer to next node in linked list
+} Student;
+
+// Head pointer to start of the linked list
+Student* head = NULL;
+
+// Compute final grade, standing, and remarks for a student
+void computeGrades(Student* s) {
+    s->finalGrade = (s->prelimGrade + s->midtermGrade + s->finalExamGrade) / 3.0; // Average
+
+    if (s->finalGrade >= 90)
+        strcpy(s->academicStanding, "Dean's Lister");
+    else if (s->finalGrade >= 75)
+        strcpy(s->academicStanding, "Regular");
+    else
+        strcpy(s->academicStanding, "Probation");
+
+    if (s->finalGrade >= 75)
+        strcpy(s->remarks, "Passed");
+    else
+        strcpy(s->remarks, "Failed");
+}
+
+// Function to input new student data
+void enterStudent() {
+    Student* newStudent = (Student*)malloc(sizeof(Student)); // Allocate memory
+    printf("Enter Student Number: "); scanf("%s", newStudent->studentNumber);
+    printf("Enter Full Name: "); getchar(); fgets(newStudent->fullName, MAX_NAME + 1, stdin);
+    newStudent->fullName[strcspn(newStudent->fullName, "\n")] = 0; // Remove newline
+    printf("Enter Gender (M/F): "); scanf(" %c", &newStudent->gender);
+    printf("Enter Program Code: "); scanf("%s", newStudent->programCode);
+    printf("Enter Year Level (1-4): "); scanf("%d", &newStudent->yearLevel);
+    printf("Enter Units Enrolled: "); scanf("%d", &newStudent->unitsEnrolled);
+    printf("Enter Prelim Grade: "); scanf("%f", &newStudent->prelimGrade);
+    printf("Enter Midterm Grade: "); scanf("%f", &newStudent->midtermGrade);
+    printf("Enter Final Exam Grade: "); scanf("%f", &newStudent->finalExamGrade);
+
+    computeGrades(newStudent); // Compute final grade and remarks
+    newStudent->next = head;   // Insert at beginning of list
+    head = newStudent;
+
+    printf("Student added successfully.\n");
+}
+
+// Function to display all student records
+void displayAll() {
+    Student* temp = head;
+    printf("\n%-12s %-30s %-6s %-4s %-4s %-10s\n", "Student No", "Full Name", "Course", "Year", "Grade", "Remarks");
+    while (temp) {
+        printf("%-12s %-30s %-6s %-4d %-4.2f %-10s\n",
+               temp->studentNumber,
+               temp->fullName,
+               temp->programCode,
+               temp->yearLevel,
+               temp->finalGrade,
+               temp->remarks);
+        temp = temp->next; // Move to next student
+    }
+}
+
+// Function to save records to a file
+void saveToFile() {
+    FILE* fp = fopen("students.txt", "w"); // Open file for writing
+    fprintf(fp, "Student No,Full Name,Gender,Program,Year,Units,Prelim,Midterm,Final,Final Grade,Standing,Remarks\n"); // Header line
+    Student* temp = head;
+    while (temp) {
+        fprintf(fp, "%s,%s,%c,%s,%d,%d,%.2f,%.2f,%.2f,%.2f,%s,%s\n",
+                temp->studentNumber, temp->fullName, temp->gender,
+                temp->programCode, temp->yearLevel, temp->unitsEnrolled,
+                temp->prelimGrade, temp->midtermGrade, temp->finalExamGrade,
+                temp->finalGrade, temp->academicStanding, temp->remarks);
+        temp = temp->next;
+    }
+    fclose(fp); // Close file
+    printf("Records saved to file.\n");
+}
+
+// Function to load student records from a file
+void loadFromFile() {
+    FILE* fp = fopen("students.txt", "r"); // Open file for reading
+    if (!fp) {
+        printf("No file found.\n");
+        return;
+    }
+
+    char line[256];
+    fgets(line, sizeof(line), fp); // Skip header line
+    while (fgets(line, sizeof(line), fp)) {
+        Student* newStudent = (Student*)malloc(sizeof(Student));
+        sscanf(line, "%[^,],%[^,],%c,%[^,],%d,%d,%f,%f,%f,%f,%[^,],%s",
+               newStudent->studentNumber, newStudent->fullName, &newStudent->gender,
+               newStudent->programCode, &newStudent->yearLevel, &newStudent->unitsEnrolled,
+               &newStudent->prelimGrade, &newStudent->midtermGrade, &newStudent->finalExamGrade,
+               &newStudent->finalGrade, newStudent->academicStanding, newStudent->remarks);
+        newStudent->next = head;
+        head = newStudent;
+    }
+    fclose(fp); // Close file
+    printf("Records loaded from file.\n");
+}
+
+// Function to sort students by final grade (descending order)
+void sortByFinalGradeDesc() {
+    if (!head || !head->next) return; // If list is empty or has one node
+    Student *i, *j;
+    for (i = head; i != NULL; i = i->next) {
+        for (j = i->next; j != NULL; j = j->next) {
+            if (j->finalGrade > i->finalGrade) {
+                Student temp = *i; // Swap node content
+                *i = *j;
+                *j = temp;
+                Student* tmp = i->next; // Fix pointers
+                i->next = j->next;
+                j->next = tmp;
+            }
+        }
+    }
+    printf("Students sorted by final grade (descending).\n");
+}
+
+// Function to search for a student by their student number
+void searchByStudentNumber() {
+    char id[11];
+    printf("Enter student number to search: ");
+    scanf("%s", id);
+
+    Student* temp = head;
+    while (temp) {
+        if (strcmp(temp->studentNumber, id) == 0) {
+            printf("\nRecord Found:\n");
+            printf("Name: %s\nGender: %c\nProgram: %s\nYear: %d\nFinal Grade: %.2f\nStanding: %s\nRemarks: %s\n",
+                   temp->fullName, temp->gender, temp->programCode, temp->yearLevel,
+                   temp->finalGrade, temp->academicStanding, temp->remarks);
+            return;
+        }
+        temp = temp->next;
+    }
+    printf("Student number not found.\n");
+}
+
+// Main menu function for user interaction
+void mainMenu() {
+    char choice;
+    do {
+        printf("\n--- MAIN MENU ---\n");
+        printf("a. Enter new student records\n");
+        printf("b. Display all student records\n");
+        printf("c. Save records to file\n");
+        printf("d. Load records from file\n");
+        printf("e. Sort students by final grade (Descending)\n");
+        printf("f. Search student by student number\n");
+        printf("g. Exit\n");
+        printf("Select an option: ");
+        scanf(" %c", &choice);
+
+        switch (choice) {
+            case 'a': enterStudent(); break;               // Add student
+            case 'b': displayAll(); break;                 // Show all
+            case 'c': saveToFile(); break;                 // Save
+            case 'd': loadFromFile(); break;               // Load
+            case 'e': sortByFinalGradeDesc(); break;       // Sort
+            case 'f': searchByStudentNumber(); break;      // Search
+            case 'g': printf("Exiting...\n"); break;       // Exit
+            default: printf("Invalid choice. Try again.\n");
+        }
+    } while (choice != 'g');
+}
+
+// Main function
+int main() {
+    mainMenu(); // Call menu
+    return 0;   // Exit program
+}
